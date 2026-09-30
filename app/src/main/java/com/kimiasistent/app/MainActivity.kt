@@ -12,8 +12,6 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.widget.EditText
@@ -27,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.kimiasistent.app.assist.VoiceInput
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,7 +41,7 @@ class MainActivity : AppCompatActivity() {
 
     private var pendingImage: Bitmap? = null
     private var afterProjection: ((Boolean) -> Unit)? = null
-    private var recognizer: SpeechRecognizer? = null
+    private var voice: VoiceInput? = null
     private val ui = Handler(Looper.getMainLooper())
 
     private val projectionLauncher =
@@ -64,8 +63,10 @@ class MainActivity : AppCompatActivity() {
 
     private val micPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) startVoice()
-            else Toast.makeText(this, "Нужен доступ к микрофону", Toast.LENGTH_SHORT).show()
+            if (!granted && !micAskedBefore()) {
+                rememberMicAsked()
+                Toast.makeText(this, "Микрофон нужен для голосового ввода — включить можно в настройках", Toast.LENGTH_LONG).show()
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -104,7 +105,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (!KimiClient.hasKey(this)) {
-            Toast.makeText(this, "Вставь API-ключ Kimi в настройках ⚙", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Вставь API-ключ в настройках ⚙ (есть бесплатные варианты)", Toast.LENGTH_LONG).show()
+        }
+        // Микрофон понадобится и в чате, и в системной панели ассистента — просим сразу
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            micPermission.launch(Manifest.permission.RECORD_AUDIO)
         }
         handleIntent(intent)
     }
@@ -192,41 +199,26 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Голосовой ввод недоступен на этом устройстве", Toast.LENGTH_SHORT).show()
             return
         }
-        recognizer?.destroy()
-        val sr = SpeechRecognizer.createSpeechRecognizer(this)
-        recognizer = sr
-        val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
-        }
-        sr.setRecognitionListener(object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
+        voice?.destroy()
+        voice = VoiceInput(this, object : VoiceInput.Callback {
+            override fun onVoiceReady() {
                 Toast.makeText(this@MainActivity, "Говорите…", Toast.LENGTH_SHORT).show()
             }
 
-            override fun onBeginningOfSpeech() {}
-            override fun onRmsChanged(rmsdB: Float) {}
-            override fun onBufferReceived(buffer: ByteArray?) {}
-            override fun onEndOfSpeech() {}
-
-            override fun onError(error: Int) {
-                if (error != SpeechRecognizer.ERROR_NO_MATCH && error != SpeechRecognizer.ERROR_SPEECH_TIMEOUT) {
-                    Toast.makeText(this@MainActivity, "Ошибка распознавания ($error)", Toast.LENGTH_SHORT).show()
-                }
+            override fun onVoiceResult(text: String) {
+                input.append(text)
+                input.requestFocus()
             }
 
-            override fun onResults(results: Bundle?) {
-                val r = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                if (!r.isNullOrEmpty()) {
-                    input.append(r[0])
-                    input.requestFocus()
+            override fun onVoiceError(code: Int) {
+                if (code != -1 &&
+                    code != SpeechRecognizer.ERROR_NO_MATCH &&
+                    code != SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                ) {
+                    Toast.makeText(this@MainActivity, "Ошибка распознавания ($code)", Toast.LENGTH_SHORT).show()
                 }
             }
-
-            override fun onPartialResults(partialResults: Bundle?) {}
-            override fun onEvent(eventType: Int, params: Bundle?) {}
-        })
-        sr.startListening(i)
+        }).also { it.start() }
     }
 
     private fun onBubbleToggle() {
@@ -270,34 +262,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendToApi() {
-        ChatStore.add(ChatMsg(false, "", null, true))
+        ChatEngine.send(this) { ui.post { refresh() } }
         refresh()
-        val hist = buildHistory()
-        KimiClient.chat(this, hist) { ok, result ->
-            ui.post {
-                val p = ChatStore.messages.lastOrNull { it.pending }
-                if (p != null) {
-                    p.pending = false
-                    p.text = if (ok) result else "⚠️ $result"
-                }
-                refresh()
-                ChatStore.save(this)
-            }
-        }
-    }
-
-    private fun buildHistory(): List<KimiClient.ApiMsg> {
-        val msgs = ChatStore.messages.filter { !it.pending }
-        val lastImgIdx = msgs.indexOfLast { it.isUser && it.image != null }
-        val start = maxOf(0, msgs.size - 12)
-        val out = ArrayList<KimiClient.ApiMsg>()
-        for (i in start until msgs.size) {
-            val m = msgs[i]
-            val img = if (i == lastImgIdx && m.image != null) m.image else null
-            val txt = if (img == null && m.image != null) "[изображение] ${m.text}" else m.text
-            out.add(KimiClient.ApiMsg(if (m.isUser) "user" else "assistant", txt, img))
-        }
-        return out
     }
 
     private fun copyText(t: String) {
@@ -305,8 +271,15 @@ class MainActivity : AppCompatActivity() {
         cm.setPrimaryClip(ClipData.newPlainText("kimi", t))
     }
 
+    private fun micAskedBefore(): Boolean =
+        getSharedPreferences("settings", Context.MODE_PRIVATE).getBoolean("mic_asked", false)
+
+    private fun rememberMicAsked() {
+        getSharedPreferences("settings", Context.MODE_PRIVATE).edit().putBoolean("mic_asked", true).apply()
+    }
+
     override fun onDestroy() {
-        recognizer?.destroy()
+        voice?.destroy()
         super.onDestroy()
     }
 }
