@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:background="@color/surface">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Кими"
+                android:textColor="#ECECF1"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="твой ассистент · работает на Kimi API"
+                android:textColor="#8A8A98"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/bubbleToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="◎"
+            android:textColor="#7C6CFF"
+            android:textSize="22sp" />
+
+        <TextView
+            android:id="@+id/clearChat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="🧹"
+            android:textSize="17sp" />
+
+        <TextView
+            android:id="@+id/settingsBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:text="⚙"
+            android:textSize="21sp" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp" />
+
+    <LinearLayout
+        android:id="@+id/previewBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        android:padding="10dp"
+        android:background="#15151D">
+
+        <ImageView
+            android:id="@+id/previewImg"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:paddingStart="10dp"
+            android:text="Скриншот прикреплён — добавь вопрос и отправь"
+            android:textColor="#B9B9C6"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/previewCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:text="✕"
+            android:textColor="#ECECF1"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="bottom"
+        android:padding="8dp"
+        android:background="@color/surface">
+
+        <ImageButton
+            android:id="@+id/micBtn"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_oval_dark"
+            android:src="@drawable/ic_mic"
+            android:contentDescription="Голосовой ввод" />
+
+        <EditText
+            android:id="@+id/input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_input"
+            android:hint="Спроси Кими…"
+            android:textColorHint="#6F6F7C"
+            android:textColor="#ECECF1"
+            android:textSize="15sp"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="4"
+            android:minHeight="46dp"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp" />
+
+        <ImageButton
+            android:id="@+id/shotBtn"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_oval_dark"
+            android:src="@drawable/ic_screen"
+            android:contentDescription="Скриншот экрана" />
+
+        <ImageButton
+            android:id="@+id/sendBtn"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
+            android:background="@drawable/bg_oval_accent"
+            android:src="@drawable/ic_send"
+            android:contentDescription="Отправить" />
+    </LinearLayout>
+</LinearLayout>
